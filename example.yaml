@@ -1,0 +1,13 @@
+user_agent: 
+
+oauth:
+  client_id: 
+  client_secret: 
+  username: 
+  password: 
+
+fetches:
+  - subreddit: #buildapcsales
+    sorting: #new
+  - subreddit: #hardwareswap
+    sorting: #new
