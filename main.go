@@ -2,6 +2,7 @@ package main
 
 import (
     "log"
+    "time"
     "xenigo/internal/config"
     "xenigo/internal/reddit"
 )
@@ -20,6 +21,15 @@ func main() {
         }
     }
 
+    // Load the cache
+    cache := NewCache()
+    if err := cache.Load("xenigo.cache"); err != nil {
+        log.Fatalf("Error loading cache: %v", err)
+    }
+
+    // Determine if we should send the initial fetch data to Discord
+    sendInitial := time.Since(cache.LastPersisted) <= 15*time.Minute
+
     // Log the startup information
     log.Println("Starting monitors with the following intervals:")
     for _, target := range appConfig.Config.Targets {
@@ -27,8 +37,20 @@ func main() {
     }
 
     for _, target := range appConfig.Config.Targets {
-        go monitorSubreddit(target, accessToken, appConfig.Config.UserAgent, string(appConfig.Context))
+        go monitorSubreddit(target, accessToken, appConfig.Config.UserAgent, string(appConfig.Context), cache, sendInitial)
     }
+
+    // Periodically save the cache
+    go func() {
+        ticker := time.NewTicker(1 * time.Minute)
+        defer ticker.Stop()
+
+        for range ticker.C {
+            if err := cache.Save("xenigo.cache"); err != nil {
+                log.Printf("Error saving cache: %v", err)
+            }
+        }
+    }()
 
     // Prevent the main function from exiting
     select {}
