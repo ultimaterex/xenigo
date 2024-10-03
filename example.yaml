@@ -1,13 +1,31 @@
-user_agent: 
+user_agent: xenigo 
 
-oauth:
-  client_id: 
-  client_secret: 
-  username: 
-  password: 
+oauth:  # entire block can be ommited if not using OAuth, will run in non elevated mode
+  client_id: 123456abcdef
+  client_secret: 124567abcdefg
+  username: example
+  password: examplepwassword
 
-fetches:
-  - subreddit: #buildapcsales
-    sorting: #new
-  - subreddit: #hardwareswap
-    sorting: #new
+
+targets:
+  - name: Cats # Can be ommited, will be subreddit name if not provided
+    monitor:
+      subreddit: cats 
+      sorting: hot # options can be: hot, new, top, controversial, rising
+    output:
+      webhook_type: discord # TODO
+      webhook_url: https://discord.com/api/webhooks/your_webhook_url
+    options:
+      interval: 60 # Don't reccomend too often, Reddit API has rate limits
+      limit: 3
+
+  - name: Doges
+    monitor:
+      subreddit: dogs
+      sorting: hot
+    output:
+      webhook_type: discord
+      webhook_url: https://discord.com/api/webhooks/your_webhook_url
+    options:
+      interval: 60
+      limit: 3
