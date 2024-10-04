@@ -8,6 +8,7 @@ import (
     "net/http"
     "net/url"
     "strings"
+    "time"
     "xenigo/internal/config"
 )
 
@@ -69,7 +70,9 @@ func GetAccessToken(oauthConfig *config.OAuthConfig) (string, error) {
 }
 
 func FetchRedditData(target config.Target, accessToken string, userAgent string, context string) (*RedditResponse, error) {
-    client := &http.Client{}
+    client := &http.Client{
+        Timeout: 10 * time.Second, // Set a timeout for the HTTP client
+    }
     url := fmt.Sprintf(jsonAPIURL, target.Monitor.Subreddit, target.Monitor.Sorting)
     if context == "elevated" {
         url = fmt.Sprintf(apiURL, target.Monitor.Subreddit, target.Monitor.Sorting)
@@ -78,47 +81,62 @@ func FetchRedditData(target config.Target, accessToken string, userAgent string,
     // Add limit parameter to the URL
     url = fmt.Sprintf("%s?limit=%d", url, target.Options.Limit)
 
-    req, err := http.NewRequest("GET", url, nil)
-    if err != nil {
-        return nil, err
-    }
-
-    if context == "elevated" {
-        req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
-    }
-
-    req.Header.Set("User-Agent", userAgent)
-
-    resp, err := client.Do(req)
-    if err != nil {
-        return nil, err
-    }
-    defer resp.Body.Close()
-
-    if resp.StatusCode != http.StatusOK {
-        bodyBytes, _ := io.ReadAll(resp.Body)
-        bodyString := string(bodyBytes)
-        log.Printf("Error: received non-200 response code: %d, body: %s", resp.StatusCode, bodyString)
-        return nil, fmt.Errorf("received non-200 response code: %d", resp.StatusCode)
-    }
-
     var redditResponse RedditResponse
-    if err := json.NewDecoder(resp.Body).Decode(&redditResponse); err != nil {
-        return nil, err
+    retries := target.Options.RetryCount
+    if retries == 0 {
+        retries = 3 // Default retry count
+    }
+    retryInterval := target.Options.RetryInterval
+    if retryInterval == 0 {
+        retryInterval = 2 // Default retry interval in seconds
     }
 
-    // Filter out pinned modposts
-    filteredChildren := []struct {
-        Data RedditPost `json:"data"`
-    }{}
-
-    for _, child := range redditResponse.Data.Children {
-        if !child.Data.Stickied {
-            filteredChildren = append(filteredChildren, child)
+    for i := 0; i < retries; i++ {
+        req, err := http.NewRequest("GET", url, nil)
+        if err != nil {
+            return nil, err
         }
+
+        if context == "elevated" {
+            req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+        }
+
+        req.Header.Set("User-Agent", userAgent)
+
+        resp, err := client.Do(req)
+        if err != nil {
+            log.Printf("Attempt %d: Error fetching Reddit data: %v", i+1, err)
+            time.Sleep(time.Duration(retryInterval) * time.Second) // Wait before retrying
+            continue
+        }
+        defer resp.Body.Close()
+
+        if resp.StatusCode != http.StatusOK {
+            bodyBytes, _ := io.ReadAll(resp.Body)
+            bodyString := string(bodyBytes)
+            log.Printf("Error: received non-200 response code: %d, body: %s", resp.StatusCode, bodyString)
+            return nil, fmt.Errorf("received non-200 response code: %d", resp.StatusCode)
+        }
+
+        if err := json.NewDecoder(resp.Body).Decode(&redditResponse); err != nil {
+            return nil, err
+        }
+
+        // Filter out pinned modposts
+        filteredChildren := []struct {
+            Data RedditPost `json:"data"`
+        }{}
+
+        for _, child := range redditResponse.Data.Children {
+            if !child.Data.Stickied {
+                filteredChildren = append(filteredChildren, child)
+            }
+        }
+
+        redditResponse.Data.Children = filteredChildren
+
+        return &redditResponse, nil
     }
 
-    redditResponse.Data.Children = filteredChildren
-
-    return &redditResponse, nil
+    return nil, fmt.Errorf("failed to fetch Reddit data after %d attempts", retries)
 }

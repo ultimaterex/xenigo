@@ -23,11 +23,14 @@ oauth:
   client_secret: test_client_secret
   username: test_username
   password: test_password
-fetches:
-  - subreddit: buildapcsales
-    sorting: new
-  - subreddit: hardwareswap
-    sorting: new
+targets:
+  - name: Cats
+    monitor:
+      subreddit: cats
+      sorting: hot
+    output:
+      webhook_type: discord
+      webhook_url: https://discord.com/api/webhooks/your_webhook_url
 `,
 			expectError: false,
 		},
@@ -35,11 +38,14 @@ fetches:
 			name: "Valid config without OAuth",
 			configData: `
 user_agent: xenigo
-fetches:
-  - subreddit: buildapcsales
-    sorting: new
-  - subreddit: hardwareswap
-    sorting: new
+targets:
+  - name: Cats
+    monitor:
+      subreddit: cats
+      sorting: hot
+    output:
+      webhook_type: discord
+      webhook_url: https://discord.com/api/webhooks/your_webhook_url
 `,
 			expectError: false,
 		},
@@ -50,11 +56,14 @@ user_agent: xenigo
 oauth:
   client_id: test_client_id
   client_secret: test_client_secret
-fetches:
-  - subreddit: buildapcsales
-    sorting: new
-  - subreddit: hardwareswap
-    sorting: new
+targets:
+  - name: Cats
+    monitor:
+      subreddit: cats
+      sorting: hot
+    output:
+      webhook_type: discord
+      webhook_url: https://discord.com/api/webhooks/your_webhook_url
 `,
 			expectError: true,
 		},

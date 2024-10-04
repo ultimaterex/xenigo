@@ -9,6 +9,16 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// Options
+const (
+	DefaultInterval      = 60
+	DefaultLimit         = 3
+	DefaultRetryCount    = 3
+	DefaultRetryInterval = 2
+)
+
+
+
 type OAuthConfig struct {
 	ClientID     string `yaml:"client_id"`
 	ClientSecret string `yaml:"client_secret"`
@@ -16,40 +26,20 @@ type OAuthConfig struct {
 	Password     string `yaml:"password"`
 }
 
-type Monitor struct {
-	Subreddit string `yaml:"subreddit"`
-	Sorting   string `yaml:"sorting"`
-}
-
-type Format struct {
-	Subreddit     *bool `yaml:"subreddit,omitempty"`
-	Author        *bool `yaml:"author,omitempty"`
-	DiscussionURL *bool `yaml:"discussion_url,omitempty"`
-	URL           *bool `yaml:"url,omitempty"`
-}
-
-type Output struct {
-	WebhookType string `yaml:"webhook_type"`
-	WebhookURL  string `yaml:"webhook_url"`
-	Format      *Format `yaml:"format,omitempty"`
-}
-
 type Options struct {
-	Interval int `yaml:"interval"`
-	Limit    int `yaml:"limit"`
-}
-
-type Target struct {
-	Name    string  `yaml:"name,omitempty"`
-	Monitor Monitor `yaml:"monitor"`
-	Output  Output  `yaml:"output"`
-	Options Options `yaml:"options"`
+	Interval       int  `yaml:"interval"`
+	Limit          int  `yaml:"limit"`
+	RetryCount     int  `yaml:"retry_count"`
+	RetryInterval  int  `yaml:"retry_interval"`
+	EnableFallback bool `yaml:"enable_fallback"`
 }
 
 type Config struct {
-	UserAgent string       `yaml:"user_agent"`
-	OAuth     *OAuthConfig `yaml:"oauth,omitempty"`
-	Targets   []Target     `yaml:"targets"`
+	UserAgent      string          `yaml:"user_agent"`
+	OAuth          *OAuthConfig    `yaml:"oauth,omitempty"`
+	Targets        []Target        `yaml:"targets"`
+	Options        *Options        `yaml:"options,omitempty"`
+	DeveloperFlags *DeveloperFlags `yaml:"developer_flags,omitempty"`
 }
 
 type Context string
@@ -62,6 +52,34 @@ const (
 type AppConfig struct {
 	Config  *Config
 	Context Context
+}
+
+type Target struct {
+	Name    string `yaml:"name"`
+	Monitor struct {
+		Subreddit string `yaml:"subreddit"`
+		Sorting   string `yaml:"sorting"`
+	} `yaml:"monitor"`
+	Output  OutputConfig `yaml:"output"`
+	Options *Options     `yaml:"options,omitempty"`
+}
+
+type OutputType string
+
+const (
+	OutputTypeDiscord OutputType = "discord"
+	OutputTypeSlack   OutputType = "slack"
+)
+
+type OutputConfig struct {
+	Type       OutputType `yaml:"type"`
+	WebhookURL string     `yaml:"webhook_url"`
+	Format     struct {
+		URL           *bool `yaml:"url"`
+		Author        *bool `yaml:"author"`
+		Subreddit     *bool `yaml:"subreddit"`
+		DiscussionURL *bool `yaml:"discussion_url"`
+	} `yaml:"format"`
 }
 
 func loadConfigFile(filename string) (*Config, error) {
@@ -79,19 +97,21 @@ func loadConfigFile(filename string) (*Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	if config.OAuth != nil {
-		if config.OAuth.ClientID == "" || config.OAuth.ClientSecret == "" || config.OAuth.Username == "" || config.OAuth.Password == "" {
-			return nil, errors.New("oauth block is not correctly configured")
-		}
+	if err := validateConfig(&config); err != nil {
+		return nil, err
 	}
+
+	setGlobalDefaults(&config)
+	setDeveloperFlagsDefaults(&config)
 
 	for i, target := range config.Targets {
 		if target.Monitor.Subreddit == "" || target.Monitor.Sorting == "" {
 			return nil, errors.New("monitor block is not correctly configured")
 		}
-		if target.Output.WebhookType == "" || target.Output.WebhookURL == "" {
+		if target.Output.WebhookURL == "" {
 			return nil, errors.New("output block is not correctly configured")
 		}
+		
 		if target.Name == "" {
 			config.Targets[i].Name = target.Monitor.Subreddit
 		}
@@ -101,54 +121,72 @@ func loadConfigFile(filename string) (*Config, error) {
 		if !*config.Targets[i].Output.Format.Subreddit && !*config.Targets[i].Output.Format.Author && !*config.Targets[i].Output.Format.DiscussionURL && !*config.Targets[i].Output.Format.URL {
 			return nil, fmt.Errorf("all format options are set to false for target %s, which will cause problems", target.Name)
 		}
+		setTargetDefaults(&config, &config.Targets[i])
+	}
+
+	if GetFlag(config.DeveloperFlags.SendFullConfigToLog) {
+		logFullConfig(&config)
 	}
 
 	return &config, nil
+}
+
+
+
+func validateConfig(config *Config) error {
+	if config.UserAgent == "" {
+		return errors.New("user_agent is required")
+	}
+	if config.OAuth != nil {
+		if config.OAuth.ClientID == "" || config.OAuth.ClientSecret == "" || config.OAuth.Username == "" || config.OAuth.Password == "" {
+			return errors.New("oauth block is not correctly configured")
+		}
+	}
+	for _, target := range config.Targets {
+		if target.Monitor.Subreddit == "" || target.Monitor.Sorting == "" {
+			return errors.New("monitor block is not correctly configured")
+		}
+		if target.Output.WebhookURL == "" {
+			return errors.New("output block is not correctly configured")
+		}
+	}
+	return nil
+}
+
+func setGlobalDefaults(config *Config) {
+	if config.Options == nil {
+		config.Options = &Options{
+			Interval:      DefaultInterval,
+			Limit:         DefaultLimit,
+			RetryCount:    DefaultRetryCount,
+			RetryInterval: DefaultRetryInterval,
+		}
+	}
+}
+
+
+
+func setTargetDefaults(config *Config, target *Target) {
+	if target.Options == nil {
+		target.Options = &Options{}
+	}
+	if config.Options != nil {
+		if target.Options.Interval == 0 {
+			target.Options.Interval = config.Options.Interval
+		}
+		if target.Options.Limit == 0 {
+			target.Options.Limit = config.Options.Limit
+		}
+		if target.Options.RetryCount == 0 {
+			target.Options.RetryCount = config.Options.RetryCount
+		}
+		if target.Options.RetryInterval == 0 {
+			target.Options.RetryInterval = config.Options.RetryInterval
+		}
+	}
 }
 
 func boolPtr(b bool) *bool {
 	return &b
 }
 
-func initializeFormat(format *Format) *Format {
-    if format == nil {
-        format = &Format{}
-    }
-    if format.Subreddit == nil {
-        format.Subreddit = boolPtr(true)
-    }
-    if format.Author == nil {
-        format.Author = boolPtr(true)
-    }
-    if format.DiscussionURL == nil {
-        format.DiscussionURL = boolPtr(true)
-    }
-    if format.URL == nil {
-        format.URL = boolPtr(true)
-    }
-    return format
-}
-
-func LoadConfig() (*AppConfig, error) {
-	filenames := []string{"config.yml", "config.yaml"}
-	var config *Config
-	var err error
-
-	for _, filename := range filenames {
-		config, err = loadConfigFile(filename)
-		if err == nil {
-			break
-		}
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	context := ContextStandard
-	if config.OAuth != nil {
-		context = ContextElevated
-	}
-
-	return &AppConfig{Config: config, Context: context}, nil
-}

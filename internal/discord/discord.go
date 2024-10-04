@@ -5,35 +5,50 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"xenigo/internal/config"
-	"xenigo/internal/reddit"
+	"xenigo/internal/output"
 )
-
-type DiscordEmbed struct {
-    Title       string `json:"title"`
-    Description string `json:"description"`
-    URL         string `json:"url"`
-    Author      struct {
-        Name string `json:"name"`
-    } `json:"author"`
-    Fields []struct {
-        Name  string `json:"name"`
-        Value string `json:"value"`
-    } `json:"fields"`
-}
 
 type DiscordWebhook struct {
     Embeds []DiscordEmbed `json:"embeds"`
 }
 
-func SendToDiscord(webhookURL string, embed DiscordEmbed) error {
-    webhook := DiscordWebhook{Embeds: []DiscordEmbed{embed}}
+type DiscordEmbed struct {
+    Title       string       `json:"title"`
+    Description string       `json:"description"`
+    URL         string       `json:"url,omitempty"`
+    Author      EmbedAuthor  `json:"author,omitempty"`
+    Fields      []EmbedField `json:"fields,omitempty"`
+}
+
+type EmbedAuthor struct {
+    Name string `json:"name"`
+}
+
+type EmbedField struct {
+    Name  string `json:"name"`
+    Value string `json:"value"`
+}
+
+type DiscordSender struct {
+    WebhookURL string
+}
+
+func (d *DiscordSender) SendMessage(embed output.MessageEmbed) error {
+    discordEmbed := DiscordEmbed{
+        Title:       embed.Title,
+        Description: embed.Description,
+        URL:         embed.URL,
+        Author:      EmbedAuthor{Name: embed.Author},
+        Fields:      convertFields(embed.Fields),
+    }
+
+    webhook := DiscordWebhook{Embeds: []DiscordEmbed{discordEmbed}}
     webhookBody, err := json.Marshal(webhook)
     if err != nil {
         return fmt.Errorf("failed to marshal webhook body: %w", err)
     }
 
-    resp, err := http.Post(webhookURL, "application/json", bytes.NewBuffer(webhookBody))
+    resp, err := http.Post(d.WebhookURL, "application/json", bytes.NewBuffer(webhookBody))
     if err != nil {
         return fmt.Errorf("failed to send webhook: %w", err)
     }
@@ -46,34 +61,13 @@ func SendToDiscord(webhookURL string, embed DiscordEmbed) error {
     return nil
 }
 
-func CreateDiscordEmbed(post reddit.RedditPost, target config.Target) DiscordEmbed {
-    embed := DiscordEmbed{
-        Title:       post.Title,
-        Description: post.Selftext,
-    }
-    if *target.Output.Format.URL {
-        embed.URL = post.URL
-    }
-    if *target.Output.Format.Author {
-        embed.Author.Name = post.Author
-    }
-    if *target.Output.Format.Subreddit {
-        embed.Fields = append(embed.Fields, struct {
-            Name  string `json:"name"`
-            Value string `json:"value"`
-        }{
-            Name:  "Subreddit",
-            Value: target.Monitor.Subreddit,
+func convertFields(fields []output.EmbedField) []EmbedField {
+    var embedFields []EmbedField
+    for _, field := range fields {
+        embedFields = append(embedFields, EmbedField{
+            Name:  field.Name,
+            Value: field.Value,
         })
     }
-    if *target.Output.Format.DiscussionURL && post.Permalink != "" {
-        embed.Fields = append(embed.Fields, struct {
-            Name  string `json:"name"`
-            Value string `json:"value"`
-        }{
-            Name:  "Discussion URL",
-            Value: fmt.Sprintf("https://www.reddit.com%s", post.Permalink),
-        })
-    }
-    return embed
+    return embedFields
 }

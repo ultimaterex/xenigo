@@ -1,31 +1,39 @@
 user_agent: xenigo 
 
-oauth:  # entire block can be ommited if not using OAuth, will run in non elevated mode
+oauth:  # entire block can be omitted if not using OAuth, will run in non-elevated mode
   client_id: 123456abcdef
   client_secret: 124567abcdefg
   username: example
-  password: examplepwassword
+  password: examplepassword
 
+options:
+  enable_fallback: true # Enable fallback to non-elevated mode if OAuth fails
+  interval: 60 # Default interval in seconds
+  limit: 3 # Default limit
+  retry_count: 3 # Default retry count
+  retry_interval: 2 # Default retry interval in seconds
+
+# developer_flags:
+#   send_full_config_to_log: true # Log the full configuration
+#   obfuscate_config_secrets: true # Obfuscate secrets in the configuration
+#   ignore_cache: true # Ignore cache when processing posts
+#   notify_mute: true # Mute notifications -> doesn't actually execute the webhook
 
 targets:
-  - name: Cats # Can be ommited, will be subreddit name if not provided
+  - name: Cats # Can be omitted, will be subreddit name if not provided
     monitor:
       subreddit: cats 
       sorting: hot # options can be: hot, new, top, controversial, rising
     output:
-      webhook_type: discord # TODO
+      type: discord # TODO
       webhook_url: https://discord.com/api/webhooks/your_webhook_url
     options:
-      interval: 60 # Don't reccomend too often, Reddit API has rate limits
+      interval: 60 # Don't recommend too often, Reddit API has rate limits
       limit: 3
+      retry_count: 3 # optional, defaults to 3s
+      retry_interval: 2 #optional, defaults to 2s
 
   - name: Doges
     monitor:
       subreddit: dogs
       sorting: hot
-    output:
-      webhook_type: discord
-      webhook_url: https://discord.com/api/webhooks/your_webhook_url
-    options:
-      interval: 60
-      limit: 3
