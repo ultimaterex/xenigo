@@ -21,13 +21,16 @@ RUN go build -o xenigo .
 FROM alpine:latest
 
 # Set the Current Working Directory inside the container
-WORKDIR /root/
+WORKDIR /
 
 # Copy the Pre-built binary file from the previous stage
 COPY --from=builder /app/xenigo .
 
+
+# COPY config/config.yaml config/config.yaml
+
 # Copy and rename the sample file to config.yaml
-# COPY example.yaml config.yaml
+COPY example.yaml config/example-config.yaml
 
 # [Placeholder] Expose port 3333 to the outside world
 # EXPOSE 3334

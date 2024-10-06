@@ -1,4 +1,5 @@
 config.yaml
+private.config.yaml
 xenigo.cache
 .metals
 .vscode/settings.json
