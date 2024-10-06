@@ -96,3 +96,39 @@ func (c *Cache) IsProcessed(permalink string) bool {
 
 	return c.ProcessedPermalinks[permalink]
 }
+
+
+func archiveCorruptedCache(cacheFile string) {
+    archiveFile := cacheFile + ".archive.bak"
+    if err := os.Rename(cacheFile, archiveFile); err != nil {
+        log.Printf("Error archiving corrupted cache: %v", err)
+    } else {
+        log.Printf("Archived corrupted cache to: %s", archiveFile)
+    }
+}
+
+
+func (c *Cache) CreateNew(filename string) error {
+    c.mu.Lock()
+    defer c.mu.Unlock()
+
+    // Initialize a new cache
+    c.ProcessedPermalinks = make(map[string]bool)
+    c.LastCacheUpdate = time.Now()
+    c.LastPersisted = time.Now()
+
+    // Save the new cache to the specified file
+    return c.Save(filename)
+}
+
+
+func (c *Cache) EnsureUsable(filename string) error {
+    if err := c.Load(filename); err != nil {
+        log.Printf("Error loading cache: %v", err)
+        archiveCorruptedCache(filename)
+        if err := c.CreateNew(filename); err != nil {
+            return err
+        }
+    }
+    return nil
+}

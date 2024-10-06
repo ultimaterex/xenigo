@@ -1,7 +1,7 @@
 package config
 
-
 import (
+    "fmt"
     "log"
     "os"
 )
@@ -33,16 +33,33 @@ targets:
         discussion_url: false
 `)
 
-func EnsureConfigFile() {
-    if _, err := os.Stat(defaultConfigFilename); os.IsNotExist(err) {
-        defaultConfig := barebonesConfig
-        err := os.WriteFile(defaultConfigFilename, defaultConfig, 0644)
-        if err != nil {
-            log.Fatalf("Error creating default config file: %v", err)
-        }
+func EnsureConfigFile(filename string) error {
+    info, err := os.Stat(filename)
+    if os.IsNotExist(err) {
+        return createDefaultConfigFile(filename)
     }
+    if err != nil {
+        return fmt.Errorf("error checking config file: %w", err)
+    }
+    if info.IsDir() {
+        return fmt.Errorf("config file is a directory")
+    }
+    file, err := os.Open(filename)
+    if err != nil {
+        return fmt.Errorf("error opening config file: %w", err)
+    }
+    defer file.Close()
+    return nil
 }
 
+func createDefaultConfigFile(filename string) error {
+    err := os.WriteFile(filename, barebonesConfig, 0644)
+    if err != nil {
+        return fmt.Errorf("error creating default config file: %w", err)
+    }
+    log.Printf("Created default config file: %s", filename)
+    return nil
+}
 
 func initializeFormat(format struct {
 	URL           *bool `yaml:"url"`

@@ -8,6 +8,12 @@ import (
 )
 
 func main() {
+    // Ensure config.yaml exists and is usable
+    configFile := "config.yaml"
+    if err := cfg.EnsureConfigFile(configFile); err != nil {
+        log.Fatalf("Error ensuring config file: %v", err)
+    }
+
     appConfig, err := cfg.LoadConfig()
     if err != nil {
         log.Fatalf("Error loading config: %v", err)
@@ -22,10 +28,11 @@ func main() {
         }
     }
 
-    // Load the cache
+    // Ensure xenigo.cache exists and is usable
+    cacheFile := "xenigo.cache"
     cache := NewCache()
-    if err := cache.Load("xenigo.cache"); err != nil {
-        log.Fatalf("Error loading cache: %v", err)
+    if err := cache.EnsureUsable(cacheFile); err != nil {
+        log.Fatalf("Error ensuring cache is usable: %v", err)
     }
 
     // Determine if we should send the initial fetch data to Discord
@@ -40,6 +47,7 @@ func main() {
         log.Printf("Monitor: %s, Interval: %d seconds\n", target.Monitor.Subreddit, target.Options.Interval)
     }
 
+    // Start monitoring
     for _, target := range config.Targets {
         go monitorSubreddit(target, accessToken, config.UserAgent, string(appConfig.Context), cache, sendInitial, config.DeveloperFlags)
     }
@@ -49,7 +57,7 @@ func main() {
         ticker := time.NewTicker(1 * time.Minute)
         defer ticker.Stop()
         for range ticker.C {
-            if err := cache.Save("xenigo.cache"); err != nil {
+            if err := cache.Save(cacheFile); err != nil {
                 log.Printf("Error saving cache: %v", err)
             }
         }
@@ -58,3 +66,4 @@ func main() {
     // Prevent the main function from exiting
     select {}
 }
+
