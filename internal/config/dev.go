@@ -3,6 +3,8 @@ package config
 import (
 	"encoding/json"
 	"log"
+	"os"
+	"path/filepath"
 )
 
 // Developer Flags
@@ -12,6 +14,7 @@ const (
 	DefaultIgnoreCache            = false
 	DefaultNotifyMute             = false
 	DefaultForceSendInitial       = false
+	DefaultDebugLogFileStructure  = false
 )
 
 type DeveloperFlags struct {
@@ -20,6 +23,7 @@ type DeveloperFlags struct {
 	IgnoreCache            *bool `yaml:"ignore_cache,omitempty"`
 	NotifyMute             *bool `yaml:"notify_mute,omitempty"`
 	ForceSendInitial       *bool `yaml:"force_send_initial,omitempty"`
+	DebugLogFileStructure  *bool `yaml:"debug_log_file_structure,omitempty"`
 }
 
 func setDeveloperFlagsDefaults(config *Config) {
@@ -30,6 +34,7 @@ func setDeveloperFlagsDefaults(config *Config) {
 			IgnoreCache:            boolPtr(DefaultIgnoreCache),
 			NotifyMute:             boolPtr(DefaultNotifyMute),
 			ForceSendInitial:       boolPtr(DefaultForceSendInitial),
+			DebugLogFileStructure:  boolPtr(DefaultDebugLogFileStructure),
 		}
 		return
 	}
@@ -50,6 +55,9 @@ func setDeveloperFlagsDefaults(config *Config) {
 	if isFlagSet(config.DeveloperFlags.ForceSendInitial) {
 		log.Printf("Developer Flag Set: ForceSendInitial: %v", *config.DeveloperFlags.ForceSendInitial)
 	}
+	if isFlagSet(config.DeveloperFlags.DebugLogFileStructure) {
+		log.Printf("Developer Flag Set: ForceSendInitial: %v", *config.DeveloperFlags.DebugLogFileStructure)
+	}
 
 	// Set the default values for the developer flags
 	if !isFlagSet(config.DeveloperFlags.SendFullConfigToLog) {
@@ -65,7 +73,10 @@ func setDeveloperFlagsDefaults(config *Config) {
 		config.DeveloperFlags.NotifyMute = boolPtr(DefaultNotifyMute)
 	}
 	if !isFlagSet(config.DeveloperFlags.ForceSendInitial) {
-		config.DeveloperFlags.ForceSendInitial = boolPtr(false) // Default value for the new flag
+		config.DeveloperFlags.ForceSendInitial = boolPtr(DefaultForceSendInitial) // Default value for the new flag
+	}
+	if !isFlagSet(config.DeveloperFlags.DebugLogFileStructure) {
+		config.DeveloperFlags.DebugLogFileStructure = boolPtr(DefaultDebugLogFileStructure) // Default value for the new flag
 	}
 }
 
@@ -96,13 +107,25 @@ func logFullConfig(config *Config) {
 	log.Printf("Full Config:\n%s", string(configJSON))
 }
 
+func logFileStructure(root string) {
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		log.Printf("File: %s", path)
+		return nil
+	})
+	if err != nil {
+		log.Printf("Error walking the path %q: %v\n", root, err)
+	}
+}
 
 // Get flag value
 func GetFlag(flag *bool) bool {
 	return *flag
 }
 
-/// check if flag is not null
+// / check if flag is not null
 func isFlagSet(flag *bool) bool {
 	return flag != nil
 }

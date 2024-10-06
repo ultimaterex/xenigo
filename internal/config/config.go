@@ -100,6 +100,10 @@ func loadConfigFile(filename string) (*Config, error) {
     }
 
     if err != nil {
+		// if GetFlag(config.DeveloperFlags.DebugLogFileStructure) { #TODO config isn't initialized yet...
+		if true {
+            logFileStructure(".")
+        }
         return nil, fmt.Errorf("failed to read config file: %w", err)
     }
 
