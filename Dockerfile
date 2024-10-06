@@ -27,7 +27,7 @@ WORKDIR /root/
 COPY --from=builder /app/xenigo .
 
 # Copy and rename the sample file to config.yaml
-COPY example.yaml config.yaml
+# COPY example.yaml config.yaml
 
 # [Placeholder] Expose port 3333 to the outside world
 # EXPOSE 3334
