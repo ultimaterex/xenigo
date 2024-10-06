@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Developer Flags
@@ -107,7 +108,7 @@ func logFullConfig(config *Config) {
 	log.Printf("Full Config:\n%s", string(configJSON))
 }
 
-func logFileStructure(root string) {
+func logFileStructureBase(root string) {
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -118,6 +119,32 @@ func logFileStructure(root string) {
 	if err != nil {
 		log.Printf("Error walking the path %q: %v\n", root, err)
 	}
+}
+
+func logFileStructure(root string, maxDepth int) {
+    log.Printf("Logging file structure for root: %s up to depth: %d", root, maxDepth)
+    logFileStructureHelper(root, 0, maxDepth)
+}
+
+func logFileStructureHelper(path string, currentDepth, maxDepth int) {
+    if currentDepth > maxDepth {
+        return
+    }
+
+    files, err := os.ReadDir(path)
+    if err != nil {
+        log.Printf("Error reading directory %q: %v\n", path, err)
+        return
+    }
+
+    for _, file := range files {
+        if file.IsDir() {
+            log.Printf("%s[DIR] %s", strings.Repeat("  ", currentDepth), file.Name())
+            logFileStructureHelper(filepath.Join(path, file.Name()), currentDepth+1, maxDepth)
+        } else {
+            log.Printf("%s[FILE] %s", strings.Repeat("  ", currentDepth), file.Name())
+        }
+    }
 }
 
 // Get flag value
