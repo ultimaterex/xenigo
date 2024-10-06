@@ -26,6 +26,9 @@ WORKDIR /root/
 # Copy the Pre-built binary file from the previous stage
 COPY --from=builder /app/xenigo .
 
+# Copy and rename the sample file to config.yaml
+COPY example.yaml config.yaml
+
 # [Placeholder] Expose port 3333 to the outside world
 # EXPOSE 3334
 
