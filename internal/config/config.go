@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -93,6 +94,7 @@ func loadConfigFile(filename string) (*Config, error) {
     var data []byte
     var err error
     for _, path := range possiblePaths {
+		log.Printf("Checking path: %s", path)
         data, err = os.ReadFile(path)
         if err == nil {
             break
