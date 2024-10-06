@@ -1,0 +1,5 @@
+config.yaml
+xenigo.cache
+.metals
+.vscode/settings.json
+.config

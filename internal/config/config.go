@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 
 	"gopkg.in/yaml.v2"
@@ -83,10 +84,24 @@ type OutputConfig struct {
 }
 
 func loadConfigFile(filename string) (*Config, error) {
-	data, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
-	}
+	possiblePaths := []string{
+        filename,
+        filepath.Join("config", filename),
+        filepath.Join("data", filename),
+    }
+
+    var data []byte
+    var err error
+    for _, path := range possiblePaths {
+        data, err = os.ReadFile(path)
+        if err == nil {
+            break
+        }
+    }
+
+    if err != nil {
+        return nil, fmt.Errorf("failed to read config file: %w", err)
+    }
 
 	// Remove yaml comments using a regular expression
 	re := regexp.MustCompile(`(?m)^\s*#.*$|(?m)\s+#.*$`)
