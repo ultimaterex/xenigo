@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"xenigo/internal/output"
 )
@@ -34,6 +35,8 @@ type DiscordSender struct {
 }
 
 func (d *DiscordSender) SendMessage(embed output.MessageEmbed) error {
+    log.Printf("Sending message to Discord: %s", embed.Title) // Log statement
+
     discordEmbed := DiscordEmbed{
         Title:       embed.Title,
         Description: embed.Description,

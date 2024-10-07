@@ -49,7 +49,7 @@ func main() {
 
     // Start monitoring
     for _, target := range config.Targets {
-        go monitorSubreddit(target, accessToken, config.UserAgent, string(appConfig.Context), cache, sendInitial, config.DeveloperFlags)
+        go monitorSubreddit(target, accessToken, config.UserAgent, string(appConfig.Context), cache, sendInitial, config.DeveloperFlags, config.OAuth)
     }
 
     // Periodically save the cache

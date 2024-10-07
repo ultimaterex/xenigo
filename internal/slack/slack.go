@@ -4,6 +4,7 @@ import (
     "bytes"
     "encoding/json"
     "fmt"
+    "log"
     "net/http"
     "xenigo/internal/output"
 )
@@ -28,6 +29,8 @@ type SlackSender struct {
 }
 
 func (s *SlackSender) SendMessage(embed output.MessageEmbed) error {
+    log.Printf("Sending message to Slack: %s", embed.Title) // Log statement
+
     slackAttachment := SlackAttachment{
         Title:  embed.Title,
         Text:   embed.Description,
