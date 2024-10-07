@@ -7,7 +7,11 @@ import (
     "xenigo/internal/reddit"
 )
 
+const appVersion string = "0.3.2"
+
 func main() {
+    log.Printf("Hello world from xenigo! (version %s)", appVersion)
+
     // Ensure config.yaml exists and is usable
     configFile := "config.yaml"
     if err := cfg.EnsureConfigFile(configFile); err != nil {
