@@ -4,6 +4,7 @@ import (
     "fmt"
     "log"
     "os"
+    "path/filepath"
 )
 
 const defaultConfigFilename = "config.yaml"
@@ -24,19 +25,20 @@ targets:
   - monitor:
       subreddit: hardwareswap
       sorting: new
-     output:
+    output:
       type: discord
       webhook_url: your_webhook_url
       format:
-       subreddit: false
+        subreddit: false
         author: false
         discussion_url: false
 `)
 
 func EnsureConfigFile(filename string) error {
-    info, err := os.Stat(filename)
+    path := filepath.Join("config", filename)
+    info, err := os.Stat(path)
     if os.IsNotExist(err) {
-        return createDefaultConfigFile(filename)
+        return createDefaultConfigFile(path)
     }
     if err != nil {
         return fmt.Errorf("error checking config file: %w", err)
@@ -44,7 +46,7 @@ func EnsureConfigFile(filename string) error {
     if info.IsDir() {
         return fmt.Errorf("config file is a directory")
     }
-    file, err := os.Open(filename)
+    file, err := os.Open(path)
     if err != nil {
         return fmt.Errorf("error opening config file: %w", err)
     }

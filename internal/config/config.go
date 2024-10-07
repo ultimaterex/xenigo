@@ -85,29 +85,12 @@ type OutputConfig struct {
 }
 
 func loadConfigFile(filename string) (*Config, error) {
-	possiblePaths := []string{
-        filename,
-        filepath.Join("config", filename),
-        filepath.Join("data", filename),
-    }
-
-    var data []byte
-    var err error
-    for _, path := range possiblePaths {
-		log.Printf("Checking path: %s", path)
-        data, err = os.ReadFile(path)
-        if err == nil {
-            break
-        }
-    }
-
-    if err != nil {
-		// if GetFlag(config.DeveloperFlags.DebugLogFileStructure) { #TODO config isn't initialized yet...
-		// if true {
-        //     logFileStructure(".", 5)
-        // }
-        return nil, fmt.Errorf("failed to read config file: %w", err)
-    }
+	path := filepath.Join("config", filename)
+	log.Printf("Checking path: %s", path)
+	data, err := os.ReadFile(path)
+	if (err != nil) {
+		return nil, fmt.Errorf("failed to read config file: %w", err)
+	}
 
 	// Remove yaml comments using a regular expression
 	re := regexp.MustCompile(`(?m)^\s*#.*$|(?m)\s+#.*$`)
@@ -144,15 +127,11 @@ func loadConfigFile(filename string) (*Config, error) {
 		}
 		setTargetDefaults(&config, &config.Targets[i])
 	}
-
 	if GetFlag(config.DeveloperFlags.SendFullConfigToLog) {
 		logFullConfig(&config)
 	}
-
 	return &config, nil
 }
-
-
 
 func validateConfig(config *Config) error {
 	if config.UserAgent == "" {

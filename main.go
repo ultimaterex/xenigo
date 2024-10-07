@@ -7,7 +7,7 @@ import (
     "xenigo/internal/reddit"
 )
 
-const appVersion string = "0.3.2"
+const appVersion string = "0.3.3"
 
 func main() {
     log.Printf("Hello world from xenigo! (version %s)", appVersion)
